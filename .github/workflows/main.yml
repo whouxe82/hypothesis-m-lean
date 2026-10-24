@@ -1,0 +1,61 @@
+name: Hypothesis M independent Lean replay
+on:
+  workflow_dispatch:
+  push:
+jobs:
+  replay:
+    runs-on: ubuntu-latest
+    timeout-minutes: 150
+    steps:
+      - uses: actions/checkout@v4
+      - name: Unpack package
+        run: unzip -q HypM_GitHub_Replication_with_rev8.zip
+      - name: Install elan (Lean version manager)
+        run: |
+          curl -sSfL https://raw.githubusercontent.com/leanprover/elan/master/elan-init.sh | sh -s -- -y --default-toolchain none
+          echo "$HOME/.elan/bin" >> "$GITHUB_PATH"
+      - name: Show pinned toolchain
+        working-directory: HypM_GitHub_Replication/replay_project
+        run: |
+          cat lean-toolchain
+          lean --version
+          lake --version
+      - name: Frozen source hash check
+        working-directory: HypM_GitHub_Replication/replay_project
+        run: python3 replay.py --check-only
+      - name: Full replay (Mathlib, build, compile, axiom audit)
+        working-directory: HypM_GitHub_Replication/replay_project
+        run: python3 replay.py
+      - name: Claude independent statement audit
+        working-directory: HypM_GitHub_Replication/replay_project
+        run: lake env lean ../independent_audit/ClaudeIndependentAudit.lean 2>&1 | tee ../claude_independent_audit.log
+      - name: Axiom gate
+        working-directory: HypM_GitHub_Replication/replay_project
+        run: python3 ../independent_audit/axiom_gate.py ../claude_independent_audit.log
+      - name: Revision 8 modules (compile against the replayed development)
+        working-directory: HypM_GitHub_Replication/replay_project
+        run: |
+          set -o pipefail
+          mkdir -p .lake/build/lib/lean
+          lake env lean ../revision8/Rev8Bounds.lean -o .lake/build/lib/lean/Rev8Bounds.olean 2>&1 | tee ../rev8_bounds.log
+          lake env lean ../revision8/Rev8Bridge.lean 2>&1 | tee ../rev8_bridge.log
+          lake env lean ../revision8/N1.lean 2>&1 | tee ../rev8_n1.log
+          sha256sum ../revision8/*.lean | tee ../rev8_sources_sha256.txt
+      - name: Revision 8 axiom gate
+        working-directory: HypM_GitHub_Replication/replay_project
+        run: |
+          python3 ../revision8/rev8_axiom_gate.py ../rev8_bounds.log HypMRev8.n2_lower HypMRev8.n2_upper
+          python3 ../revision8/rev8_axiom_gate.py ../rev8_bridge.log HypMRev8Bridge.n2_lower_frozen HypMRev8Bridge.n2_upper_frozen
+          python3 ../revision8/rev8_axiom_gate.py ../rev8_n1.log N1.N1
+      - name: Upload logs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: hypothesis-m-replay-logs
+          path: |
+            HypM_GitHub_Replication/replay_project/replay_runs/
+            HypM_GitHub_Replication/claude_independent_audit.log
+            HypM_GitHub_Replication/rev8_bounds.log
+            HypM_GitHub_Replication/rev8_bridge.log
+            HypM_GitHub_Replication/rev8_n1.log
+            HypM_GitHub_Replication/rev8_sources_sha256.txt
