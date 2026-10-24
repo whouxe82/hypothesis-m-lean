@@ -1,0 +1,101 @@
+name: Hypothesis M replay with revision 9
+on:
+  workflow_dispatch:
+  push:
+jobs:
+  replay:
+    runs-on: ubuntu-latest
+    timeout-minutes: 180
+    steps:
+      - uses: actions/checkout@v4
+      - name: Unpack package
+        run: unzip -q HypM_GitHub_Replication_with_rev8.zip
+      - name: Install elan (Lean version manager)
+        run: |
+          curl -sSfL https://raw.githubusercontent.com/leanprover/elan/master/elan-init.sh | sh -s -- -y --default-toolchain none
+          echo "$HOME/.elan/bin" >> "$GITHUB_PATH"
+      - name: Show pinned toolchain
+        working-directory: HypM_GitHub_Replication/replay_project
+        run: |
+          cat lean-toolchain
+          lean --version
+          lake --version
+      - name: Frozen source hash check
+        working-directory: HypM_GitHub_Replication/replay_project
+        run: python3 replay.py --check-only
+      - name: Full replay (Mathlib, build, compile, axiom audit)
+        working-directory: HypM_GitHub_Replication/replay_project
+        run: python3 replay.py
+      - name: Claude independent statement audit
+        working-directory: HypM_GitHub_Replication/replay_project
+        run: lake env lean ../independent_audit/ClaudeIndependentAudit.lean 2>&1 | tee ../claude_independent_audit.log
+      - name: Axiom gate
+        working-directory: HypM_GitHub_Replication/replay_project
+        run: python3 ../independent_audit/axiom_gate.py ../claude_independent_audit.log
+      - name: Revision 8 and revision 9 modules (compile in dependency order)
+        working-directory: HypM_GitHub_Replication/replay_project
+        run: |
+          set -o pipefail
+          # Copied in only after the frozen-source hash check, so the 33 frozen files are untouched.
+          cp ../revision8/Rev8Bounds.lean ../revision8/Rev8Bridge.lean ../revision8/N1.lean .
+          cp "$GITHUB_WORKSPACE"/Rev9*.lean .
+          sha256sum Rev8Bounds.lean Rev8Bridge.lean N1.lean Rev9*.lean | tee ../rev9_sources_sha256.txt
+          mkdir -p .lake/build/lib/lean ../rev9_logs
+          for m in Rev8Bounds N1 Rev8Bridge \
+                   Rev9Residues Rev9RealCount Rev9CountBridge Rev9CountFour Rev9FourRate \
+                   Rev9RatioReduction Rev9Maximum Rev9Digits Rev9ExactBits Rev9PeriodReduction \
+                   Rev9FiniteBase; do
+            echo "== compiling $m"
+            lake env lean "$m.lean" -o ".lake/build/lib/lean/$m.olean" 2>&1 | tee "../rev9_logs/$m.log"
+          done
+          lake env lean Rev9Audit.lean 2>&1 | tee ../rev9_logs/Rev9Audit.log
+          lake env lean Rev9IndependenceAudit.lean 2>&1 | tee ../rev9_logs/Rev9IndependenceAudit.log
+      - name: Revision 9 axiom and independence gate
+        working-directory: HypM_GitHub_Replication/replay_project
+        run: |
+          python3 - <<'EOF'
+          import glob, re, sys
+          STANDARD = {"propext", "Classical.choice", "Quot.sound"}
+          ok = True
+          # Every theorem the audit file asks about must report only the standard axioms.
+          required = re.findall(r"#print axioms\s+(\S+)", open("Rev9Audit.lean", encoding="utf-8").read())
+          audit = open("../rev9_logs/Rev9Audit.log", encoding="utf-8").read()
+          found = {}
+          for name, ax in re.findall(r"'([^']+)' depends on axioms: \[([^\]]*)\]", audit):
+              found[name] = {a.strip() for a in ax.split(",") if a.strip()}
+          for name in re.findall(r"'([^']+)' does not depend on any axioms", audit):
+              found[name] = set()
+          for name in required:
+              if name not in found:
+                  print(f"MISSING axiom report for {name}"); ok = False
+              elif not found[name] <= STANDARD:
+                  print(f"NONSTANDARD axioms in {name}: {sorted(found[name] - STANDARD)}"); ok = False
+              else:
+                  print(f"OK  {name}: {sorted(found[name])}")
+          # No compile errors, sorry, or native-code shortcuts in any revision 8/9 log.
+          for path in sorted(glob.glob("../rev9_logs/*.log")):
+              text = open(path, encoding="utf-8").read()
+              if "error:" in text or "sorryAx" in text or "ofReduceBool" in text:
+                  print(f"ERROR, sorry or forbidden axiom in {path}"); ok = False
+          # The second proof must not depend on Theorem 1 or Corollary 2.
+          indep = open("../rev9_logs/Rev9IndependenceAudit.log", encoding="utf-8").read()
+          passes = re.findall(r"INDEPENDENCE PASS: (\S+);", indep)
+          for root in ["HypMRev9Base.second_proof_finite_base", "HypMRev9.period_implies_exit"]:
+              if root in passes:
+                  print(f"OK  independence: {root}")
+              else:
+                  print(f"MISSING independence pass for {root}"); ok = False
+          print(f"{len(required)} audited theorems")
+          print("REV9 GATE:", "PASS" if ok else "FAIL")
+          sys.exit(0 if ok else 1)
+          EOF
+      - name: Upload logs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: hypothesis-m-rev9-logs
+          path: |
+            HypM_GitHub_Replication/replay_project/replay_runs/
+            HypM_GitHub_Replication/claude_independent_audit.log
+            HypM_GitHub_Replication/rev9_logs/
+            HypM_GitHub_Replication/rev9_sources_sha256.txt
