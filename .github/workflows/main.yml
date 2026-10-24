@@ -36,11 +36,14 @@ jobs:
         working-directory: HypM_GitHub_Replication/replay_project
         run: |
           set -o pipefail
+          # Lean compiles a module only from inside the package root, so copy the three
+          # revision 8 sources in after the frozen-source checks have already run.
+          cp ../revision8/Rev8Bounds.lean ../revision8/Rev8Bridge.lean ../revision8/N1.lean .
+          sha256sum Rev8Bounds.lean Rev8Bridge.lean N1.lean | tee ../rev8_sources_sha256.txt
           mkdir -p .lake/build/lib/lean
-          lake env lean ../revision8/Rev8Bounds.lean -o .lake/build/lib/lean/Rev8Bounds.olean 2>&1 | tee ../rev8_bounds.log
-          lake env lean ../revision8/Rev8Bridge.lean 2>&1 | tee ../rev8_bridge.log
-          lake env lean ../revision8/N1.lean 2>&1 | tee ../rev8_n1.log
-          sha256sum ../revision8/*.lean | tee ../rev8_sources_sha256.txt
+          lake env lean Rev8Bounds.lean -o .lake/build/lib/lean/Rev8Bounds.olean 2>&1 | tee ../rev8_bounds.log
+          lake env lean Rev8Bridge.lean 2>&1 | tee ../rev8_bridge.log
+          lake env lean N1.lean 2>&1 | tee ../rev8_n1.log
       - name: Revision 8 axiom gate
         working-directory: HypM_GitHub_Replication/replay_project
         run: |
