@@ -1,4 +1,4 @@
-name: Hypothesis M independent Lean replay
+name: Hypothesis M replay with revision 8
 on:
   workflow_dispatch:
   push:
