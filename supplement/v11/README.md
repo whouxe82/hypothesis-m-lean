@@ -1,7 +1,8 @@
 # Hypothesis M — supplementary computations for version 11.2
 
-Exact-arithmetic checks cited in Section 11.2 of *An Exact Exit Bound for the Critical
-Coefficient Corridor of the Collatz Map* (W. C. Houze, version 11.2, October 2026).
+Exact-arithmetic checks cited in Section 11.2 of *Sharp Exit Bounds for the Critical Sturmian
+Parity Word of the 3x+1 Map, with an Effective 2-adic Approximation Bound*
+(W. C. Houze, version 11.2, October 2026).
 All decisions use Python integers; no floating-point value decides any inequality
 (the continued fraction of log_3 2 in `hypm_check.py` is computed with mpmath at 200 digits;
 the critical word itself is computed exactly, from floor(j log_3 2) = max{a : 3^a <= 2^j}).
