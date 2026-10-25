@@ -1,9 +1,19 @@
-N=1000000: 630930 odd positions; xi computed in 73.5s
+N=1000000: 630930 odd positions
 xi mod 2^64 = 0xad0140abc9be5bfb
 SHA-256 of xi mod 2^N (little-endian bytes): cab5d3274200b1d9d7a0a9f7c2853a2671b8e4fef99a7e353d9ab9f148c43ff9
 certificate r_L^2 >= 2^L for 2<=L<=1000000: failures=[] (count 0); exact comparisons needed: 1
 zero runs z_k <= k-1 for 2<=k<499999: violations=0
 records of M(k)-k = z_k + 1: [(2, 2), (15, 3), (40, 7), (49, 8), (196, 9), (415, 14), (1131, 16), (75107, 19), (154881, 20)]
 fraction of k in [2,499999) with xi_k = 1 (M(k) = k+1): 0.49965
-total time 74.0s
 Theorem 4 at 499917 eligible bit lengths b < 499999: violations=0
+one-digits xi_k = 1 for 2<=k<499999: 249824 of 499997
+z_k <= k-2 for 3<=k<499999: violations=0
+Lemma 11 q=2, q_next=3: holds for 2<=t<=2: True; at t=3: False; at t=1: False
+Lemma 11 q=3, q_next=8: holds for 2<=t<=7: True; at t=8: False; at t=1: True
+Lemma 11 q=8, q_next=19: holds for 2<=t<=18: True; at t=19: False; at t=1: False
+Lemma 11 q=19, q_next=65: holds for 2<=t<=64: True; at t=65: False; at t=1: True
+Lemma 11 q=65, q_next=84: holds for 2<=t<=83: True; at t=84: False; at t=1: False
+Lemma 11 q=84, q_next=485: holds for 2<=t<=484: True; at t=485: False; at t=1: True
+Lemma 11 q=485, q_next=1054: holds for 2<=t<=1053: True; at t=1054: False; at t=1: False
+Lemma 11 q=1054, q_next=24727: holds for 2<=t<=24726: True; at t=24727: False; at t=1: True
+Lemma 11 q=24727, q_next=50508: holds for 2<=t<=50507: True; at t=50508: False; at t=1: False
