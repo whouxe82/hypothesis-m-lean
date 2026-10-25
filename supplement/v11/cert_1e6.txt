@@ -1,0 +1,9 @@
+N=1000000: 630930 odd positions; xi computed in 73.5s
+xi mod 2^64 = 0xad0140abc9be5bfb
+SHA-256 of xi mod 2^N (little-endian bytes): cab5d3274200b1d9d7a0a9f7c2853a2671b8e4fef99a7e353d9ab9f148c43ff9
+certificate r_L^2 >= 2^L for 2<=L<=1000000: failures=[] (count 0); exact comparisons needed: 1
+zero runs z_k <= k-1 for 2<=k<499999: violations=0
+records of M(k)-k = z_k + 1: [(2, 2), (15, 3), (40, 7), (49, 8), (196, 9), (415, 14), (1131, 16), (75107, 19), (154881, 20)]
+fraction of k in [2,499999) with xi_k = 1 (M(k) = k+1): 0.49965
+total time 74.0s
+Theorem 4 at 499917 eligible bit lengths b < 499999: violations=0
